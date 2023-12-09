@@ -108,8 +108,20 @@ app.get('/download-image', async (req, res) => {
 
     try {
         const response = await axios.get(imageUrl, { responseType: 'arraybuffer' });
-        res.set('Content-Type', 'image/jpeg');
-        res.send(response.data);
+
+        // To Do: set filename to make sure no image replaces each other
+        const randNum = String(Math.ceil(Math.random() * 9999)).padStart(4, '0')
+        const path = `temp/${randNum}-${Date.now()}.png`
+
+        fs.writeFile(`public/${path}`, response.data, err => {
+            if (err) {
+                throw err
+            }
+
+            res.send({ imageUrl : path });
+            
+        })
+
     } catch (error) {
         console.error(error);
         res.status(500).send('Error fetching image');
