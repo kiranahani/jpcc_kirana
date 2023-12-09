@@ -93,37 +93,35 @@ document.getElementById('shareButton').addEventListener('click', function() {
 
     // Tell the server to save the generated image
     fetch(proxyUrl)
-        .then(res => res.json())
-        .then(result => {
-            if (!result) {
+        .then(res => res.blob())
+        .then(blob => {
+            if (!blob) {
+                alert('Failed to download image')
+                return
+            }
+
+            const file = new File([blob], "generated image", { type: 'image/png' })
+
+            if (!navigator.canShare(file)) {
                 alert('Failed to share image')
                 return
             }
 
-            // Get the image
-            fetch(window.location.href + result.imageUrl)
-                .then(res => res.blob)
-                .then(blob => {
-                    if (!blob) {
-                        alert('Failed to download image')
-                        return
-                    }
 
-                    const file = new File([blob], "generated image")
-    
-                    // Share the image
-                    // To Do: Set the title to match inputted description?
-                    navigator.share({
-                        title: "Try",
-                        files: [file]
-                    })
-                })
-
-                // fetch(`/download-image?url=${encodeURIComponent(imageUrl)}`)
-                // .then(response => response.text())
-                // .then(text => alert(text))
-                // .catch(error => console.error('Error:', error));
+            // Share the image
+            // To Do: Set the title to match inputted description?
+            navigator.share({
+                title: "Try",
+                files: [file]
+            }).catch(error => {
+                alert(error)
             })
+
+            // fetch(`/download-image?url=${encodeURIComponent(imageUrl)}`)
+            // .then(response => response.text())
+            // .then(text => alert(text))
+            // .catch(error => console.error('Error:', error));
+        })
     
 });
 
