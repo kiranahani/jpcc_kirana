@@ -90,14 +90,39 @@ document.getElementById('downloadButton').addEventListener('click', () => {
 });
 document.getElementById('shareButton').addEventListener('click', function() {
     const proxyUrl = `/download-image?url=${encodeURIComponent(globalImageUrl)}`;
-        fetch(proxyUrl)
-            .then(res => res.blob())
-            .then(blob => {
-                const imageUrl = URL.createObjectURL(blob);;
-                fetch(`/download-image?url=${encodeURIComponent(imageUrl)}`)
-                .then(response => response.text())
-                .then(text => alert(text))
-                .catch(error => console.error('Error:', error));
+
+    // Tell the server to save the generated image
+    fetch(proxyUrl)
+        .then(res => res.json())
+        .then(result => {
+            if (!result) {
+                alert('Failed to share image')
+                return
+            }
+
+            // Get the image
+            fetch(window.location.href + result.imageUrl)
+                .then(res => res.blob)
+                .then(blob => {
+                    if (!blob) {
+                        alert('Failed to download image')
+                        return
+                    }
+
+                    const file = new File([blob], "generated image")
+    
+                    // Share the image
+                    // To Do: Set the title to match inputted description?
+                    navigator.share({
+                        title: "Try",
+                        files: [file]
+                    })
+                })
+
+                // fetch(`/download-image?url=${encodeURIComponent(imageUrl)}`)
+                // .then(response => response.text())
+                // .then(text => alert(text))
+                // .catch(error => console.error('Error:', error));
             })
     
 });
