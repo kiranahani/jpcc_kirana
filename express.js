@@ -111,14 +111,23 @@ app.get('/download-image', async (req, res) => {
 
         // To Do: set filename to make sure no image replaces each other
         const randNum = String(Math.ceil(Math.random() * 9999)).padStart(4, '0')
-        const path = `temp/${randNum}-${Date.now()}.png`
 
-        fs.writeFile(`public/${path}`, response.data, err => {
+        const dir = 'public/temp'
+
+        const path = `${randNum}-${Date.now()}.png`
+        
+        if (!fs.existsSync(dir)) {
+            fs.mkdirSync(dir)
+        }
+
+        fs.writeFile(`${dir}/${path}`, response.data, err => {
             if (err) {
                 throw err
             }
 
-            res.send({ imageUrl : path });
+            const filePath = `${__dirname}/${dir}/${path}`
+
+            res.sendFile(filePath)
             
         })
 
