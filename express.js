@@ -41,7 +41,34 @@ const dateLimits = {
     '2023-12-06': 100
 };
 
+/**
+ * Convert array buffer into a string
+ * 
+ * @param {ArrayBuffer} arraybuffer Array buffer to be converted into a base64 string
+ * @returns 
+ */
+async function arrayBufferToBase64(arraybuffer) {
+
+    return new Promise(resolve => {
+        let base64  = ''
+        let bytes   = new Uint8Array( arraybuffer )
+        let len     = bytes.byteLength
+
+        for (var i = 0; i < len; i++) {
+            base64 += String.fromCharCode( bytes[i] )
+        }
+
+        resolve(btoa( base64 ))
+    })
+
+}
+
+/**
+ * Save error message to a log file
+ * @param {string} message Error Message
+ */
 function saveErrorLog(message) {
+    
     const now = new Date
 
     const day   = now.getDate().toString().padStart(2, '0')
@@ -99,12 +126,10 @@ app.post('/generate-image', async (req, res) => {
         const prompt = `Illustrated Disney Pixar, Christmas Postcard with ${description}. '${customText}' text in picture`;
 
         const response = await axios.post('https://api.openai.com/v1/images/generations', {
-            model           : 'dall-e-3',
-            prompt          : prompt,
-            n               : 1,
-            quality         : 'standard',
-            size            : '1024x1024',
-            response_format : 'b64_json',
+            model   : 'dall-e-3',
+            prompt  : prompt,
+            n       : 1,
+            size    : '1024x1024',
         }, {
             headers: { Authorization: `Bearer ${DALLE_API_KEY}` },
         });
@@ -117,31 +142,7 @@ app.post('/generate-image', async (req, res) => {
             return
         }
 
-        const file  = response.data.data[0].b64_json
-
-        const dir   = 'public/generated'
-
-        const randNum   = String(Math.ceil(Math.random() * 9999)).padStart(4, '0')
-        const path      = `${randNum}-${Date.now()}.png`
-
-        if (!fs.existsSync(dir)) {
-            fs.mkdirSync(dir)
-        }
-
-        fs.writeFile(`${dir}/${path}`, file, 'base64', err => {
-            if (err) {
-                throw err
-            }
-
-            const accessibleDir = dir.replace('public/', '')
-            const imageUrl      = `${accessibleDir}/${path}`
-
-            res.json({
-                imageUrl    : imageUrl,
-                base64Blob  : file,
-            })
-            
-        })
+        res.json({ imageUrl: response.data.data[0].url })
 
         
     } catch (error) {
@@ -156,6 +157,67 @@ app.post('/generate-image', async (req, res) => {
         res.status(500).send('Error calling DALL-E API');
     }
 });
+
+app.post('/persist-generated-image', async (req, res) => {
+
+    const { imageUrl } = req.body;
+    if (!imageUrl) {
+        return res.status(400).send('Image URL is required');
+    }
+
+    try {
+
+        const response = await axios.get(imageUrl, { responseType: 'arraybuffer' });
+
+        // To Do: set filename to make sure no image replaces each other
+        const randNum = String(Math.ceil(Math.random() * 9999)).padStart(4, '0')
+
+        const dir = 'public/generated'
+
+        const path = `${randNum}-${Date.now()}.png`
+
+        if (!fs.existsSync(dir)) {
+            fs.mkdirSync(dir)
+        }
+
+        let failedToPersist = false
+
+        Promise.all([
+            arrayBufferToBase64(response.data),
+            fs.writeFile(`${dir}/${path}`, response.data, error => {
+                failedToPersist = true
+            }),
+        ]).then(responseArray => {
+
+            if (failedToPersist) {
+                throw new Error('Failed to persist the generated image')
+            }
+
+            const base64Image = responseArray[0]
+
+            const publicDir = dir.replace('public/', '')
+
+            res.json({
+                imageUrl: `${publicDir}/${path}`,
+                blob    : base64Image
+            })
+
+        }).catch(error => {
+            saveErrorLog(JSON.stringify(error))
+        })
+
+    } catch (error) {
+        
+        if (error.response?.data?.error) {
+            saveErrorLog(JSON.stringify(error.response.data.error))
+        } else {
+            saveErrorLog(JSON.stringify(error))
+        }
+
+        res.status(500).send('Error saving generated image');
+
+    }
+})
 
 // app.get('/serve-image', async (req, res) => {
 //     const imageUrl = req.query.url;

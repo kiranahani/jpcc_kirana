@@ -25,20 +25,71 @@ function base64ToBlob(base64, contentType = 'image/png') {
     for (let offset = 0; offset < byteCharacters.length; offset += sliceSize) {
 
         const slice = byteCharacters.slice(offset, offset + sliceSize)
-    
+
         const byteNumbers = new Array(slice.length)
         for (let i = 0; i < slice.length; i++) {
             byteNumbers[i] = slice.charCodeAt(i)
         }
-    
+
         const byteArray = new Uint8Array(byteNumbers)
         byteArrays.push(byteArray)
 
     }
-    
+
     const blob = new Blob(byteArrays, {type: contentType})
     return blob
 
+}
+
+/**
+ * Persist generated image into the server
+ * 
+ * @param {string} imageUrl the image url hosted by DALL-E
+ */
+async function persistGeneratedImage(imageUrl) {
+
+    if (!imageUrl) {
+        alert('Invalid image url')
+        return
+    }
+
+    try {
+
+        const response = await fetch('/persist-generated-image', {
+            method: 'POST',
+            body: JSON.stringify({
+                imageUrl: imageUrl
+            }),
+            headers: {
+                'Content-Type': 'application/json'
+            }
+        })
+
+        if (!response.ok) {
+            throw new Error(`Server responded with status: ${response.status}`)
+        }
+
+        const data = await response.json()
+        if (!data.imageUrl || 
+            !data.blob || 
+            !data.blob
+        ) {
+            throw new Error('Invalid response from backend')
+        }
+
+        globalImageUrl = data.imageUrl
+        globalImageBlob= base64ToBlob(data.blob)
+
+        const shareButton = document.getElementById('shareButton');
+
+        shareButton.removeAttribute('disabled')
+
+    } catch (error) {
+        
+        console.error('Error:', error);
+        alert('An error occurred while persisting the image.');
+
+    }
 }
 
 // Handle form submission for image generation
@@ -77,19 +128,19 @@ document.getElementById('cardForm').addEventListener('submit', async (event) => 
 
         const data = await response.json();
 
-        if (!data.imageUrl || !data.base64Blob) {
+        if (!data.imageUrl) {
             alert('No image was returned. Please try again.');
             return
         }
 
-        globalImageBlob = base64ToBlob(data.base64Blob)
         globalImageUrl  = data.imageUrl;
-
 
         generatedImage.src = data.imageUrl;
         generatedImage.style.display = 'block';
         downloadButton.style.display = 'block';
         shareButton.style.display = 'block';
+
+        persistGeneratedImage(data.imageUrl)
         
     } catch (error) {
         console.error('Error:', error);
@@ -128,33 +179,35 @@ document.getElementById('shareButton').addEventListener('click', function() {
         return
     }
 
-    if (typeof navigator.canShare == 'undefined') {
-        alert ('Your device does not support the operation')
+    const mime      = globalImageBlob.type
+    const extension = mime.replace('image/', '')
+    const files     = [new File([globalImageBlob], `generatedImage.${extension}`, { type: mime })]
+
+    const shareData = {
+        title   : "Generated Christmas Card",
+        text    : "Merry Christmas!",
+        url     : `${window.location.href}${globalImageUrl}`,
+    }
+
+    if (navigator.canShare) {
+        alert ('You are not in https connection or your device does not support the operation')
         return
     }
 
-    const mime = blob.type
+    if (!navigator.canShare({ files })) {
 
-    const extension = mime.replace('image/', '')
-
-    const file = new File([blob], `generated_image.${extension}`, { type: mime })
-
-    if (!navigator.canShare({files: [file]})) {
-
-        navigator.share({
-            title   : "Generated Christmas Card",
-            url     : `${window.location.href}${globalImageUrl}`
-        }).catch(error => {
+        navigator.share(shareData)
+        .catch(error => {
             alert(error)
-        })
+        })        
 
     } else {
-
+        
         navigator.share({
-            title   : "Generated Christmas Card",
-            url     : `${window.location.href}${globalImageUrl}`,
-            files   : [file]
-        }).catch(error => {
+            ...shareData,
+            files: files
+        })
+        .catch(error => {
             alert(error)
         })
 

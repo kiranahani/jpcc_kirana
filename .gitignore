@@ -1,3 +1,5 @@
 .env
+logs
 public/temp
+public/generated
 node_modules
