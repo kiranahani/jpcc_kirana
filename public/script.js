@@ -1,10 +1,95 @@
-let globalImageUrl = ''; // Variable to store the image URL globally
+let globalImageUrl  = '' // Variable to store the image URL globally
+let globalImageBlob
 
 // Function to fetch image as a blob
 function fetchImageAsBlob(imageUrl) {
     return fetch(imageUrl)
         .then(response => response.blob())
         .catch(error => console.error('Error fetching image:', error));
+}
+
+/**
+ * Convert base 64 string to image blob
+ * 
+ * @param {string} base64 Base 64 encoded image
+ * @param {string} contentType mimetype of the image
+ * @returns Blob object of the image
+ */
+function base64ToBlob(base64, contentType = 'image/png') {
+
+    const sliceSize = 512
+
+    const byteCharacters    = atob(base64);
+    const byteArrays        = [];
+
+    for (let offset = 0; offset < byteCharacters.length; offset += sliceSize) {
+
+        const slice = byteCharacters.slice(offset, offset + sliceSize)
+
+        const byteNumbers = new Array(slice.length)
+        for (let i = 0; i < slice.length; i++) {
+            byteNumbers[i] = slice.charCodeAt(i)
+        }
+
+        const byteArray = new Uint8Array(byteNumbers)
+        byteArrays.push(byteArray)
+
+    }
+
+    const blob = new Blob(byteArrays, {type: contentType})
+    return blob
+
+}
+
+/**
+ * Persist generated image into the server
+ * 
+ * @param {string} imageUrl the image url hosted by DALL-E
+ */
+async function persistGeneratedImage(imageUrl) {
+
+    if (!imageUrl) {
+        alert('Invalid image url')
+        return
+    }
+
+    try {
+
+        const response = await fetch('/persist-generated-image', {
+            method: 'POST',
+            body: JSON.stringify({
+                imageUrl: imageUrl
+            }),
+            headers: {
+                'Content-Type': 'application/json'
+            }
+        })
+
+        if (!response.ok) {
+            throw new Error(`Server responded with status: ${response.status}`)
+        }
+
+        const data = await response.json()
+        if (!data.imageUrl || 
+            !data.blob || 
+            !data.blob
+        ) {
+            throw new Error('Invalid response from backend')
+        }
+
+        globalImageUrl = data.imageUrl
+        globalImageBlob= base64ToBlob(data.blob)
+
+        const shareButton = document.getElementById('shareButton');
+
+        shareButton.removeAttribute('disabled')
+
+    } catch (error) {
+        
+        console.error('Error:', error);
+        alert('An error occurred while persisting the image.');
+
+    }
 }
 
 // Handle form submission for image generation
@@ -34,20 +119,29 @@ document.getElementById('cardForm').addEventListener('submit', async (event) => 
 
         if (response.status === 429) {
             apiLimitMessage.style.display = 'block';
-        } else if (response.ok) {
-            const data = await response.json();
-            if (data.imageUrl) {
-                globalImageUrl = data.imageUrl;
-                generatedImage.src = data.imageUrl;
-                generatedImage.style.display = 'block';
-                downloadButton.style.display = 'block';
-                shareButton.style.display = 'block';
-            } else {
-                alert('No image was returned. Please try again.');
-            }
-        } else {
+            return
+        } 
+
+        if (!response.ok) {
             throw new Error(`Server responded with status: ${response.status}`);
         }
+
+        const data = await response.json();
+
+        if (!data.imageUrl) {
+            alert('No image was returned. Please try again.');
+            return
+        }
+
+        globalImageUrl  = data.imageUrl;
+
+        generatedImage.src = data.imageUrl;
+        generatedImage.style.display = 'block';
+        downloadButton.style.display = 'block';
+        shareButton.style.display = 'block';
+
+        persistGeneratedImage(data.imageUrl)
+        
     } catch (error) {
         console.error('Error:', error);
         alert('An error occurred while generating the image.');
@@ -58,70 +152,66 @@ document.getElementById('cardForm').addEventListener('submit', async (event) => 
 
 // Handle image download
 document.getElementById('downloadButton').addEventListener('click', () => {
-    if (globalImageUrl) {
-        const downloadingMessage = document.getElementById('downloadingMessage');
-        const downloadCompleteMessage = document.getElementById('downloadCompleteMessage');
-
-        downloadingMessage.style.display = 'block';
-        downloadCompleteMessage.style.display = 'none';
-
-        const proxyUrl = `/download-image?url=${encodeURIComponent(globalImageUrl)}`;
-        fetch(proxyUrl)
-            .then(res => res.blob())
-            .then(blob => {
-                const imageUrl = URL.createObjectURL(blob);
-                const link = document.createElement('a');
-                link.href = imageUrl;
-                link.download = 'custom_christmas_card.jpg';
-                document.body.appendChild(link);
-                link.click();
-                document.body.removeChild(link);
-                URL.revokeObjectURL(imageUrl);
-
-                downloadingMessage.style.display = 'none';
-                downloadCompleteMessage.style.display = 'block';
-            })
-            .catch(error => {
-                console.error('Error downloading the image:', error);
-                alert('An error occurred while downloading the image.');
-                downloadingMessage.style.display = 'none';
-            });
+    
+    if (!globalImageUrl) {
+        alert('Failed to get image')
+        return
     }
+
+    const anchor = document.createElement('a')
+
+    anchor.href             = globalImageUrl
+    anchor.download         = "generated_christmas_card.png"
+    anchor.style.display    = 'none'
+
+    document.body.appendChild(anchor)
+
+    anchor.click()
+
+    document.body.removeChild(anchor)
+
 });
+
 document.getElementById('shareButton').addEventListener('click', function() {
-    const proxyUrl = `/download-image?url=${encodeURIComponent(globalImageUrl)}`;
 
-    // Tell the server to save the generated image
-    fetch(proxyUrl)
-        .then(res => res.blob())
-        .then(blob => {
-            if (!blob) {
-                alert('Failed to download image')
-                return
-            }
+    if (!globalImageBlob) {
+        alert('Image is not fully downloaded yet')
+        return
+    }
 
-            const file = new File([blob], "generated image", { type: 'image/png' })
+    const mime      = globalImageBlob.type
+    const extension = mime.replace('image/', '')
+    const files     = [new File([globalImageBlob], `generatedImage.${extension}`, { type: mime })]
 
-            if (!navigator.canShare(file)) {
-                alert('Failed to share image')
-                return
-            }
+    const shareData = {
+        title   : "Generated Christmas Card",
+        text    : "Merry Christmas!",
+        url     : `${window.location.href}${globalImageUrl}`,
+    }
 
+    if (navigator.canShare) {
+        alert ('You are not in https connection or your device does not support the operation')
+        return
+    }
 
-            // Share the image
-            // To Do: Set the title to match inputted description?
-            navigator.share({
-                title: "Try",
-                files: [file]
-            }).catch(error => {
-                alert(error)
-            })
+    if (!navigator.canShare({ files })) {
 
-            // fetch(`/download-image?url=${encodeURIComponent(imageUrl)}`)
-            // .then(response => response.text())
-            // .then(text => alert(text))
-            // .catch(error => console.error('Error:', error));
+        navigator.share(shareData)
+        .catch(error => {
+            alert(error)
+        })        
+
+    } else {
+        
+        navigator.share({
+            ...shareData,
+            files: files
         })
+        .catch(error => {
+            alert(error)
+        })
+
+    }
     
 });
 
