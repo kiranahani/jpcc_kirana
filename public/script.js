@@ -189,7 +189,7 @@ document.getElementById('shareButton').addEventListener('click', function() {
         url     : `${window.location.href}${globalImageUrl}`,
     }
 
-    if (navigator.canShare) {
+    if (!navigator.canShare) {
         alert ('You are not in https connection or your device does not support the operation')
         return
     }
