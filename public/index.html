@@ -12,12 +12,15 @@
         <button type="submit">Generate Image</button>
         <div id="apiLimitMessage" style="display:none; color: red;">Sorry, we're closed. Please try again tomorrow.</div>
     </form>
-<div id="loadingIndicator" style="display:none;">Loading...</div>
-<img id="generatedImage" src="" alt="Generated Image" style="display:none;">
-<button id="downloadButton" style="display:none;">Download Image</button>
-<button id="shareButton" style="display:none;">Share Image</button>
-<div id="downloadingMessage" style="display:none;">Downloading...</div>
-<div id="downloadCompleteMessage" style="display:none;">Download Complete!</div>
-<script src="script.js"></script>
+    <div id="loadingIndicator" style="display:none;">Loading...</div>
+    <img id="generatedImage" src="" alt="Generated Image" style="display:none;">
+
+    <button id="downloadButton" style="display:none;">Download Image</button>
+    <button id="shareButton" style="display:none;" disabled>Share Image</button>
+
+    <div id="downloadingMessage" style="display:none;">Downloading...</div>
+    <div id="downloadCompleteMessage" style="display:none;">Download Complete!</div>
+
+    <script src="script.js"></script>
 </body>
 </html>
