@@ -5,6 +5,10 @@ const dotenv = require('dotenv');
 const cors = require('cors');
 const fs = require('fs');
 const path = require('path');
+const multer = require('multer');
+const storage = multer.memoryStorage();
+const upload = multer({storage: storage, limits: { fieldSize : 3145728 }})
+
 dotenv.config();
 
 const app = express();
@@ -40,28 +44,6 @@ const dateLimits = {
     '2023-12-05': 1,
     '2023-12-06': 100
 };
-
-/**
- * Convert array buffer into a string
- * 
- * @param {ArrayBuffer} arraybuffer Array buffer to be converted into a base64 string
- * @returns 
- */
-async function arrayBufferToBase64(arraybuffer) {
-
-    return new Promise(resolve => {
-        let base64  = ''
-        let bytes   = new Uint8Array( arraybuffer )
-        let len     = bytes.byteLength
-
-        for (var i = 0; i < len; i++) {
-            base64 += String.fromCharCode( bytes[i] )
-        }
-
-        resolve(btoa( base64 ))
-    })
-
-}
 
 /**
  * Save error message to a log file
@@ -142,7 +124,18 @@ app.post('/generate-image', async (req, res) => {
             return
         }
 
-        res.json({ imageUrl: response.data.data[0].url })
+        const imageUrl = response.data.data[0].url
+        const imageResponse = await axios.get(imageUrl, { responseType: 'arraybuffer' });
+
+        if (imageResponse.status != 200 ||
+            !imageResponse.data
+        ) {
+            res.status(500).send('Generated image is not valid')
+            return
+        }
+
+        res.setHeader('Content-Type', 'image/png')
+        res.send(imageResponse.data)
 
         
     } catch (error) {
@@ -158,16 +151,14 @@ app.post('/generate-image', async (req, res) => {
     }
 });
 
-app.post('/persist-generated-image', async (req, res) => {
+app.post('/persist-generated-image', upload.single('image'), async (req, res) => {
 
-    const { imageUrl } = req.body;
-    if (!imageUrl) {
-        return res.status(400).send('Image URL is required');
+    const image = req.file;
+    if (!image) {
+        return res.status(400).send('Image is required');
     }
 
     try {
-
-        const response = await axios.get(imageUrl, { responseType: 'arraybuffer' });
 
         // To Do: set filename to make sure no image replaces each other
         const randNum = String(Math.ceil(Math.random() * 9999)).padStart(4, '0')
@@ -180,39 +171,23 @@ app.post('/persist-generated-image', async (req, res) => {
             fs.mkdirSync(dir)
         }
 
-        let failedToPersist = false
-
-        Promise.all([
-            arrayBufferToBase64(response.data),
-            fs.writeFile(`${dir}/${path}`, response.data, error => {
-                failedToPersist = true
-            }),
-        ]).then(responseArray => {
-
-            if (failedToPersist) {
+        fs.writeFile(`${dir}/${path}`, image.buffer, error => {
+            if (error) {
                 throw new Error('Failed to persist the generated image')
             }
-
-            const base64Image = responseArray[0]
 
             const publicDir = dir.replace('public/', '')
 
             res.json({
                 imageUrl: `${publicDir}/${path}`,
-                blob    : base64Image
             })
-
-        }).catch(error => {
-            saveErrorLog(JSON.stringify(error))
         })
 
     } catch (error) {
+
+        console.error(error)
         
-        if (error.response?.data?.error) {
-            saveErrorLog(JSON.stringify(error.response.data.error))
-        } else {
-            saveErrorLog(JSON.stringify(error))
-        }
+        saveErrorLog(JSON.stringify(error))
 
         res.status(500).send('Error saving generated image');
 
