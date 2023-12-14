@@ -2,13 +2,6 @@ let globalImageUrl  = '' // Variable to store the image URL globally
 let globalImageBlob
 let polaroidBlob
 
-// Function to fetch image as a blob
-function fetchImageAsBlob(imageUrl) {
-    return fetch(imageUrl)
-        .then(response => response.blob())
-        .catch(error => console.error('Error fetching image:', error));
-}
-
 /**
  * Hide element when after user submit
  */
@@ -31,39 +24,6 @@ function startLoading() {
 
     form.setAttribute('disabled', true)
 
-}
-
-/**
- * Convert base 64 string to image blob
- * 
- * @param {string} base64 Base 64 encoded image
- * @param {string} contentType mimetype of the image
- * @returns Blob object of the image
- */
-async function base64ToBlob(base64, contentType = 'image/png') {
-    return new Promise(resolve => {
-        const sliceSize = 512
-
-        const byteCharacters    = atob(base64);
-        const byteArrays        = [];
-
-        for (let offset = 0; offset < byteCharacters.length; offset += sliceSize) {
-
-            const slice = byteCharacters.slice(offset, offset + sliceSize)
-
-            const byteNumbers = new Array(slice.length)
-            for (let i = 0; i < slice.length; i++) {
-                byteNumbers[i] = slice.charCodeAt(i)
-            }
-
-            const byteArray = new Uint8Array(byteNumbers)
-            byteArrays.push(byteArray)
-
-        }
-
-        const blob = new Blob(byteArrays, {type: contentType})
-        resolve(blob)
-    })
 }
 
 /**
@@ -159,6 +119,9 @@ async function persistGeneratedImage() {
         
     }
 }
+
+
+/** --- Event Handlers --- */
 
 // Handle form submission for image generation
 document.getElementById('cardForm').addEventListener('submit', async (event) => {
@@ -260,6 +223,13 @@ document.getElementById('shareButton').addEventListener('click', function() {
 
         navigator.share(shareData)
         .catch(error => {
+
+            // Custom pop up batal share di sini
+
+            if (error.name && error.name == 'AbortError') {
+                return
+            }
+
             alert(error)
         })        
 
@@ -270,44 +240,16 @@ document.getElementById('shareButton').addEventListener('click', function() {
             files: files
         })
         .catch(error => {
+
+            // Custom pop up batal share di sini
+
+            if (error.name && error.name == 'AbortError') {
+                return
+            }
+
             alert(error)
         })
 
     }
     
 });
-
-// Handle image sharing
-// document.getElementById('shareButton').addEventListener('click', () => {
-//     const generatedImage = document.getElementById('generatedImage');
-    
-//     if (generatedImage && generatedImage.src) {
-//         fetch(generatedImage.src,{
-//             mode: 'no-cors'
-//         })
-//             .then(response => {
-//                 response.blob()
-//                 console.log('Request made with no-cors mode');
-//             })
-//             .then(blob => {
-//                 const file = new File([blob], 'custom_christmas_card.png', { type: 'image/png' });
-//                 if (navigator.canShare && navigator.canShare({ files: [file] })) {
-//                     // Try sharing the image file
-//                     navigator.share({
-//                         files: [file],
-//                         title: 'Custom Christmas Card',
-//                         text: 'Check out this custom Christmas card I created!'
-//                     }).then(() => {
-//                         console.log('Successful share');
-//                     }).catch((error) => {
-//                         console.log('Error sharing:', error);
-//                     });
-//                 } else {
-//                     console.log("Sharing not supported for this file.");
-//                 }
-//             })
-//             .catch(error => console.error('Error fetching the image:', error));
-//     } else {
-//         console.log("No image available to share.");
-//     }
-// });
