@@ -231,25 +231,25 @@ document.getElementById('shareButton').addEventListener('click', function() {
             }
 
             alert(error)
-        })        
-
-    } else {
-        
-        navigator.share({
-            ...shareData,
-            files: files
         })
-        .catch(error => {
 
-            // Custom pop up batal share di sini
-
-            if (error.name && error.name == 'AbortError') {
-                return
-            }
-
-            alert(error)
-        })
+        return
 
     }
+        
+    navigator.share({
+        ...shareData,
+        files: files
+    })
+    .catch(error => {
+
+        // Custom pop up batal share di sini
+
+        if (error.name && error.name == 'AbortError') {
+            return
+        }
+
+        alert(error)
+    })
     
 });
