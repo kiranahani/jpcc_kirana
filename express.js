@@ -97,6 +97,7 @@ function canMakeApiCall() {
 }
 
 app.post('/generate-image', async (req, res) => {
+    
     try {
         const canCallApi = await canMakeApiCall();
         if (!canCallApi) {
@@ -149,6 +150,7 @@ app.post('/generate-image', async (req, res) => {
 
         res.status(500).send('Error calling DALL-E API');
     }
+
 });
 
 app.post('/persist-generated-image', upload.single('image'), async (req, res) => {
@@ -193,54 +195,6 @@ app.post('/persist-generated-image', upload.single('image'), async (req, res) =>
 
     }
 })
-
-// app.get('/serve-image', async (req, res) => {
-//     const imageUrl = req.query.url;
-//     if (!imageUrl) {
-//         return res.status(400).send('Image URL is required');
-//     }
-
-//     try {
-//         const response = await axios({
-//             method: 'GET',
-//             url: imageUrl,
-//             responseType: 'stream'
-//         });
-
-//         const imagePath = path.join(__dirname, 'img', 'downloadedImage.jpg'); // Change 'downloadedImage.jpg' to the desired file name
-//         const writer = fs.createWriteStream(imagePath);
-
-//         response.data.pipe(writer);
-
-//         writer.on('finish', () => {
-//             res.send({ message: 'Image downloaded successfully', path: imagePath });
-//         });
-
-//         writer.on('error', (err) => {
-//             console.error('Error writing image to disk', err);
-//             res.status(500).send('Error saving image');
-//         });
-//     } catch (error) {
-//         console.error(error);
-//         res.status(500).send('Error fetching image');
-//     }
-// });
-
-function saveImageToServer(imageUrl) {
-    fetch(`/save-image?url=${encodeURIComponent(imageUrl)}`)
-    .then(response => response.json())
-    .then(data => {
-        if (data.message === 'Image saved successfully') {
-            console.log('Image saved to server:', data.path);
-            // Tindakan selanjutnya setelah gambar berhasil disimpan
-        } else {
-            console.error('Server failed to save the image.');
-        }
-    })
-    .catch(error => {
-        console.error('Error saving image to server:', error);
-    });
-}
 
 const PORT = process.env.PORT || 3001;
 app.listen(PORT, () => {
