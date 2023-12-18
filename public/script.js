@@ -2,28 +2,70 @@ let globalImageUrl  = '' // Variable to store the image URL globally
 let globalImageBlob
 let polaroidBlob
 
+// Function to fetch image as a blob
+function fetchImageAsBlob(imageUrl) {
+    return fetch(imageUrl)
+        .then(response => response.blob())
+        .catch(error => console.error('Error fetching image:', error));
+}
+
 /**
  * Hide element when after user submit
  */
 function startLoading() {
 
-    const processingIndicator = document.getElementById('processingIndicator');
-    const loadingIndicator  = document.getElementById('loadingIndicator');
+    //const processingIndicator = document.getElementById('processingIndicator');
+    //const loadingIndicator  = document.getElementById('loadingIndicator');
     const generatedImage    = document.getElementById('generatedImage');
-    const apiLimitMessage   = document.getElementById('apiLimitMessage');
+    //const apiLimitMessage   = document.getElementById('apiLimitMessage');
+    const closeSection = document.getElementById('closeSection');
+    const sectionGate = document.getElementById('section-gate');
     const downloadButton    = document.getElementById('downloadButton');
     const shareButton       = document.getElementById('shareButton');
     const form              = document.getElementById('cardForm');
 
-    processingIndicator.style.display = 'none';
-    loadingIndicator.style.display  = 'block';
+   // processingIndicator.style.display = 'none';
+   // loadingIndicator.style.display  = 'block';
     generatedImage.style.display    = 'none';
-    apiLimitMessage.style.display   = 'none';
+   // apiLimitMessage.style.display   = 'none';
     downloadButton.style.display    = 'none';
     shareButton.style.display       = 'none';
 
     form.setAttribute('disabled', true)
 
+}
+
+/**
+ * Convert base 64 string to image blob
+ * 
+ * @param {string} base64 Base 64 encoded image
+ * @param {string} contentType mimetype of the image
+ * @returns Blob object of the image
+ */
+async function base64ToBlob(base64, contentType = 'image/png') {
+    return new Promise(resolve => {
+        const sliceSize = 512
+
+        const byteCharacters    = atob(base64);
+        const byteArrays        = [];
+
+        for (let offset = 0; offset < byteCharacters.length; offset += sliceSize) {
+
+            const slice = byteCharacters.slice(offset, offset + sliceSize)
+
+            const byteNumbers = new Array(slice.length)
+            for (let i = 0; i < slice.length; i++) {
+                byteNumbers[i] = slice.charCodeAt(i)
+            }
+
+            const byteArray = new Uint8Array(byteNumbers)
+            byteArrays.push(byteArray)
+
+        }
+
+        const blob = new Blob(byteArrays, {type: contentType})
+        resolve(blob)
+    })
 }
 
 /**
@@ -33,8 +75,8 @@ function startLoading() {
  * @returns 
  */
 async function mergeImage(image) {
-    const processingIndicator = document.querySelector('#processingIndicator')
-    processingIndicator.style.display = 'block'
+    //const processingIndicator = document.querySelector('#processingIndicator')
+    //processingIndicator.style.display = 'block'
 
     try {
 
@@ -42,7 +84,7 @@ async function mergeImage(image) {
         const context   = canvas.getContext('2d')
 
         context.drawImage(await createImageBitmap(polaroidBlob), 0, 0)
-        context.drawImage(await createImageBitmap(image), 152, 45, 718, 718)
+        context.drawImage(await createImageBitmap(image), 45, 45, 718, 718)
 
         canvas.toBlob(blob => {
             globalImageBlob = blob
@@ -56,7 +98,7 @@ async function mergeImage(image) {
         alert('An error occured while merging image')
 
     } finally {
-        processingIndicator.style.display = 'none'
+      //  processingIndicator.style.display = 'none'
     }
 
 }
@@ -66,8 +108,8 @@ async function mergeImage(image) {
  */
 async function persistGeneratedImage() {
 
-    const persistingIndicator = document.querySelector('#persistingIndicator')
-    persistingIndicator.style.display = 'block'
+   // const persistingIndicator = document.querySelector('#persistingIndicator')
+   // persistingIndicator.style.display = 'block'
 
     try {
 
@@ -112,16 +154,13 @@ async function persistGeneratedImage() {
     } catch (error) {
         
         console.error('Error:', error);
-        alert('An error occurred while persisting the image.');
+        //alert('An error occurred while persisting the image.');
 
     } finally {
-        persistingIndicator.style.display = 'none';
+      //  persistingIndicator.style.display = 'none';
         
     }
 }
-
-
-/** --- Event Handlers --- */
 
 // Handle form submission for image generation
 document.getElementById('cardForm').addEventListener('submit', async (event) => {
@@ -130,7 +169,9 @@ document.getElementById('cardForm').addEventListener('submit', async (event) => 
     const description       = document.getElementById('description').value;
     const customText        = document.getElementById('customText').value;
     const loadingIndicator  = document.getElementById('loadingIndicator');
-
+    const resultImage  = document.getElementById('resultImage');
+    
+    generatedImage.style.display    = 'block';
     startLoading()
 
     try {
@@ -140,11 +181,13 @@ document.getElementById('cardForm').addEventListener('submit', async (event) => 
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ description, customText }),
             }),
-            fetch(`${location.href}assets/polaroid.png`)
+            fetch(`${location.href}assets/frame.png`)
         ]);
-
+        
         if (imageResponse.status === 429) {
-            apiLimitMessage.style.display = 'block';
+            closeSection.style.display = "block";
+          //  apiLimitMessage.style.display = 'block';
+          alert('An error occurred while generating the image because API limit.');
             return
         } 
 
@@ -168,10 +211,17 @@ document.getElementById('cardForm').addEventListener('submit', async (event) => 
     } catch (error) {
 
         console.error('Error:', error);
-        alert('An error occurred while generating the image.');
+        const delay = 1000; // 1 second
+
+        setTimeout(() => {
+            closeSection.style.display = 'block';
+        }, delay);
+        
+        //alert('An error occurred while generating the image because API limit.');
 
     } finally {
         loadingIndicator.style.display = 'none';
+        
     }
 });
 
@@ -223,33 +273,54 @@ document.getElementById('shareButton').addEventListener('click', function() {
 
         navigator.share(shareData)
         .catch(error => {
+          //  alert(error)
+        })        
 
-            // Custom pop up batal share di sini
-
-            if (error.name && error.name == 'AbortError') {
-                return
-            }
-
-            alert(error)
+    } else {
+        
+        navigator.share({
+            ...shareData,
+            files: files
+        })
+        .catch(error => {
+           // alert(error)
         })
 
-        return
-
     }
-        
-    navigator.share({
-        ...shareData,
-        files: files
-    })
-    .catch(error => {
-
-        // Custom pop up batal share di sini
-
-        if (error.name && error.name == 'AbortError') {
-            return
-        }
-
-        alert(error)
-    })
     
 });
+
+// Handle image sharing
+// document.getElementById('shareButton').addEventListener('click', () => {
+//     const generatedImage = document.getElementById('generatedImage');
+    
+//     if (generatedImage && generatedImage.src) {
+//         fetch(generatedImage.src,{
+//             mode: 'no-cors'
+//         })
+//             .then(response => {
+//                 response.blob()
+//                 console.log('Request made with no-cors mode');
+//             })
+//             .then(blob => {
+//                 const file = new File([blob], 'custom_christmas_card.png', { type: 'image/png' });
+//                 if (navigator.canShare && navigator.canShare({ files: [file] })) {
+//                     // Try sharing the image file
+//                     navigator.share({
+//                         files: [file],
+//                         title: 'Custom Christmas Card',
+//                         text: 'Check out this custom Christmas card I created!'
+//                     }).then(() => {
+//                         console.log('Successful share');
+//                     }).catch((error) => {
+//                         console.log('Error sharing:', error);
+//                     });
+//                 } else {
+//                     console.log("Sharing not supported for this file.");
+//                 }
+//             })
+//             .catch(error => console.error('Error fetching the image:', error));
+//     } else {
+//         console.log("No image available to share.");
+//     }
+// });

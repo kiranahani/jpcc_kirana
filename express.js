@@ -28,59 +28,38 @@ if (!DALLE_API_KEY) {
 const db = new sqlite3.Database('api_usage.db', (err) => {
     if (err) {
         console.error(err.message);
-    } else {
-        console.log('Connected to the SQLite database.');
-        db.run(`
-            CREATE TABLE IF NOT EXISTS api_usage (
-                date TEXT PRIMARY KEY,
-                count INTEGER
-            )
-        `);
+        process.exit(1);
     }
+    console.log('Connected to the SQLite database.');
+    db.run(`CREATE TABLE IF NOT EXISTS api_usage (date TEXT PRIMARY KEY, count INTEGER)`);
 });
 
 const dateLimits = {
-    '2023-12-04': 10,
-    '2023-12-05': 1,
-    '2023-12-06': 100
+    '2023-12-18': 3000,
+    '2023-12-25': 3000,
+    '2023-12-26': 2000,
+    '2023-12-27': 200,
+    '2023-12-28': 200,
+    '2023-12-29': 200,
+    '2023-12-30': 200,
 };
-
-/**
- * Save error message to a log file
- * @param {string} message Error Message
- */
-function saveErrorLog(message) {
-    
-    const now = new Date
-
-    const day   = now.getDate().toString().padStart(2, '0')
-    const month = now.getMonth().toString().padStart(2, '0')
-    const year  = now.getFullYear().toString().padStart(4, '0')
-
-    const timestamp = now.toISOString()
-
-    const dir = "logs"
-
-    if (!fs.existsSync(dir)) {
-        fs.mkdirSync(dir)
-    }
-
-    fs.appendFileSync(`${dir}/error_log_${year}_${month}_${day}.log`, `[${timestamp}]: ${message}\n`)
-}
 
 function canMakeApiCall() {
     return new Promise((resolve, reject) => {
         const today = new Date().toISOString().split('T')[0];
-        if (dateLimits[today]) {
-            db.get('SELECT count FROM api_usage WHERE date = ?', today, (err, row) => {
+        if (!dateLimits.hasOwnProperty(today)) {
+            reject(new Error('No API calls allowed on this date'));
+        } else {
+            db.get('SELECT count FROM api_usage WHERE date = ?', [today], (err, row) => {
                 if (err) {
                     reject(err);
                 } else {
-                    if (row && row.count >= dateLimits[today]) {
-                        resolve(false);
+                    const currentCount = row ? row.count : 0;
+                    if (currentCount >= dateLimits[today]) {
+                        reject(new Error('API call limit reached for today'));
                     } else {
-                        const newCount = row ? row.count + 1 : 1;
-                        db.run('INSERT OR REPLACE INTO api_usage (date, count) VALUES (?, ?)', today, newCount, (err) => {
+                        const newCount = currentCount + 1;
+                        db.run('INSERT OR REPLACE INTO api_usage (date, count) VALUES (?, ?)', [today, newCount], (err) => {
                             if (err) {
                                 reject(err);
                             } else {
@@ -90,14 +69,13 @@ function canMakeApiCall() {
                     }
                 }
             });
-        } else {
-            resolve(true);
         }
     });
 }
 
+
+
 app.post('/generate-image', async (req, res) => {
-    
     try {
         const canCallApi = await canMakeApiCall();
         if (!canCallApi) {
@@ -106,7 +84,7 @@ app.post('/generate-image', async (req, res) => {
         }
 
         const { description, customText } = req.body;
-        const prompt = `Illustrated Disney Pixar, Christmas Postcard with ${description}. '${customText}' text in picture`;
+        const prompt = `Illustrated Disney Pixar, Christmas Postcard with ${description}. Merry Christmas text must be in picture handwritten font, '${customText}' text must be in picture,  ensuring all elements are centrally composed to prevent cropping and all the text is inside the picture `;
 
         const response = await axios.post('https://api.openai.com/v1/images/generations', {
             model   : 'dall-e-3',
@@ -140,17 +118,16 @@ app.post('/generate-image', async (req, res) => {
 
         
     } catch (error) {
-        console.error(error);
 
         if (error.response?.data?.error) {
-            saveErrorLog(JSON.stringify(error.response.data.error))
+          //  saveErrorLog(JSON.stringify(error.response.data.error))
         } else {
-            saveErrorLog(JSON.stringify(error))
+          //  saveErrorLog(JSON.stringify(error))
         }
 
+        console.error(error);
         res.status(500).send('Error calling DALL-E API');
     }
-
 });
 
 app.post('/persist-generated-image', upload.single('image'), async (req, res) => {
@@ -189,14 +166,62 @@ app.post('/persist-generated-image', upload.single('image'), async (req, res) =>
 
         console.error(error)
         
-        saveErrorLog(JSON.stringify(error))
+       // saveErrorLog(JSON.stringify(error))
 
         res.status(500).send('Error saving generated image');
 
     }
 })
 
-const PORT = process.env.PORT || 3001;
+// app.get('/serve-image', async (req, res) => {
+//     const imageUrl = req.query.url;
+//     if (!imageUrl) {
+//         return res.status(400).send('Image URL is required');
+//     }
+
+//     try {
+//         const response = await axios({
+//             method: 'GET',
+//             url: imageUrl,
+//             responseType: 'stream'
+//         });
+
+//         const imagePath = path.join(__dirname, 'img', 'downloadedImage.jpg'); // Change 'downloadedImage.jpg' to the desired file name
+//         const writer = fs.createWriteStream(imagePath);
+
+//         response.data.pipe(writer);
+
+//         writer.on('finish', () => {
+//             res.send({ message: 'Image downloaded successfully', path: imagePath });
+//         });
+
+//         writer.on('error', (err) => {
+//             console.error('Error writing image to disk', err);
+//             res.status(500).send('Error saving image');
+//         });
+//     } catch (error) {
+//         console.error(error);
+//         res.status(500).send('Error fetching image');
+//     }
+// });
+
+function saveImageToServer(imageUrl) {
+    fetch(`/save-image?url=${encodeURIComponent(imageUrl)}`)
+    .then(response => response.json())
+    .then(data => {
+        if (data.message === 'Image saved successfully') {
+            console.log('Image saved to server:', data.path);
+            // Tindakan selanjutnya setelah gambar berhasil disimpan
+        } else {
+            console.error('Server failed to save the image.');
+        }
+    })
+    .catch(error => {
+        console.error('Error saving image to server:', error);
+    });
+}
+
+const PORT = process.env.PORT || 3002;
 app.listen(PORT, () => {
     console.log(`Server running on http://localhost:${PORT}`);
 });

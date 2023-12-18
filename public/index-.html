@@ -1,0 +1,33 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Custom Christmas Card Generator</title>
+</head>
+<body>
+    <h1>Custom Christmas Card Generator</h1>
+
+    <form id="cardForm">
+        <input type="text" id="description" placeholder="Enter description for the Christmas card">
+        <input type="text" id="customText" placeholder="Enter custom text for the Christmas card">
+        <button type="submit">Generate Image</button>
+        <div id="apiLimitMessage" style="display:none; color: red;">Sorry, we're closed. Please try again tomorrow.</div>
+    </form>
+
+    <div id="loadingIndicator" style="display:none;">Loading ...</div>
+    <div id="processingIndicator" style="display: none;">Processing ...</div>
+    <div id="persistingIndicator" style="display: none;">Almost There ...</div>
+
+    <canvas id="drawingCanvas" style="display: none;" width="1024" height="1024"></canvas>
+
+    <img id="generatedImage" src="" alt="Generated Image" style="display:none;" loading="lazy">
+
+    <button id="downloadButton" style="display:none;">Download Image</button>
+    <button id="shareButton" style="display:none;">Share Image</button>
+
+    <div id="downloadingMessage" style="display:none;">Downloading...</div>
+    <div id="downloadCompleteMessage" style="display:none;">Download Complete!</div>
+
+    <script src="script.js?2"></script>
+</body>
+</html>
