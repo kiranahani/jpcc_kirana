@@ -25,6 +25,29 @@ if (!DALLE_API_KEY) {
     process.exit(1);
 }
 
+/**
+ * Save error message to a log file
+ * @param {string} message Error Message
+ */
+function saveErrorLog(message) {
+
+    const now = new Date
+
+    const day   = now.getDate().toString().padStart(2, '0')
+    const month = now.getMonth().toString().padStart(2, '0')
+    const year  = now.getFullYear().toString().padStart(4, '0')
+
+    const timestamp = now.toISOString()
+
+    const dir = "logs"
+
+    if (!fs.existsSync(dir)) {
+        fs.mkdirSync(dir)
+    }
+
+    fs.appendFileSync(`${dir}/error_log_${year}_${month}_${day}.log`, `[${timestamp}]: ${message}\n`)
+}
+
 const db = new sqlite3.Database('api_usage.db', (err) => {
     if (err) {
         console.error(err.message);
@@ -125,9 +148,9 @@ app.post('/generate-image', async (req, res) => {
     } catch (error) {
 
         if (error.response?.data?.error) {
-          saveErrorLog(JSON.stringify(error.response.data.error))
+            saveErrorLog(JSON.stringify(error.response.data.error))
         } else {
-          saveErrorLog(JSON.stringify(error))
+            saveErrorLog(JSON.stringify(error))
         }
 
         console.error(error);
@@ -171,7 +194,7 @@ app.post('/persist-generated-image', upload.single('image'), async (req, res) =>
 
         console.error(error)
         
-       saveErrorLog(JSON.stringify(error))
+        saveErrorLog(JSON.stringify(error))
 
         res.status(500).send('Error saving generated image');
 
