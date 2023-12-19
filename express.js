@@ -35,7 +35,7 @@ const db = new sqlite3.Database('api_usage.db', (err) => {
 });
 
 const dateLimits = {
-    '2023-12-18': 3000,
+    '2023-12-19': 3000,
     '2023-12-25': 3000,
     '2023-12-26': 2000,
     '2023-12-27': 200,
@@ -47,29 +47,34 @@ const dateLimits = {
 function canMakeApiCall() {
     return new Promise((resolve, reject) => {
         const today = new Date().toISOString().split('T')[0];
+
         if (!dateLimits.hasOwnProperty(today)) {
-            reject(new Error('No API calls allowed on this date'));
-        } else {
-            db.get('SELECT count FROM api_usage WHERE date = ?', [today], (err, row) => {
+            resolve(false);
+            return
+        }
+
+        db.get('SELECT count FROM api_usage WHERE date = ?', [today], (err, row) => {
+            if (err) {
+                reject(err);
+                return
+            }
+
+            const currentCount = row ? row.count : 0;
+
+            if (currentCount >= dateLimits[today]) {
+                resolve(false);
+            } 
+
+            const newCount = currentCount + 1;
+            db.run('INSERT OR REPLACE INTO api_usage (date, count) VALUES (?, ?)', [today, newCount], (err) => {
                 if (err) {
                     reject(err);
-                } else {
-                    const currentCount = row ? row.count : 0;
-                    if (currentCount >= dateLimits[today]) {
-                        reject(new Error('API call limit reached for today'));
-                    } else {
-                        const newCount = currentCount + 1;
-                        db.run('INSERT OR REPLACE INTO api_usage (date, count) VALUES (?, ?)', [today, newCount], (err) => {
-                            if (err) {
-                                reject(err);
-                            } else {
-                                resolve(true);
-                            }
-                        });
-                    }
+                    return
                 }
+
+                resolve(true);
             });
-        }
+        });
     });
 }
 
