@@ -1,6 +1,7 @@
 .body {
   background-image: url('../images/Prompting-Page_BG-alt-1.jpg');
   background-position: 50% 0;
+  background-repeat: no-repeat;
   background-size: cover;
   background-attachment: fixed;
   justify-content: center;
@@ -96,6 +97,7 @@
 .section-start {
   background-image: url('../images/Artboard-110-100.jpg');
   background-position: 50% 0;
+  background-repeat: no-repeat;
   background-size: cover;
   background-attachment: fixed;
   justify-content: center;
@@ -115,6 +117,7 @@
 .section-close {
   background-image: url('../images/Artboard-110_1-100.jpg');
   background-position: 50% 0;
+  background-repeat: no-repeat;
   background-size: cover;
   background-attachment: fixed;
   justify-content: center;
@@ -166,7 +169,7 @@
   display: flex;
 }
 
-.success {
+.open {
   height: 1px;
 }
 
@@ -222,6 +225,10 @@
   font-size: 16px;
 }
 
+.close {
+  height: 1px;
+}
+
 @media screen and (max-width: 767px) {
   .form-block {
     display: block;
@@ -255,6 +262,13 @@
 }
 
 @media screen and (max-width: 479px) {
+  .body {
+    background-position: 50% 0;
+    background-repeat: no-repeat;
+    background-size: cover;
+    background-attachment: fixed;
+  }
+
   .form-block {
     width: 100%;
     padding-left: 40px;

@@ -1815,7 +1815,6 @@ textarea.w-select {
 .wf-layout-layout {
   display: grid;
 }
-
 #drawingCanvas, #generatedImage, #resultImage {
   display: flex;
   justify-content: center;

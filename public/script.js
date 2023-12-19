@@ -183,14 +183,18 @@ document.getElementById('cardForm').addEventListener('submit', async (event) => 
             }),
             fetch(`${location.href}assets/frame.png`)
         ]);
-        
+
         if (imageResponse.status === 429) {
-            closeSection.style.display = "block";
+            
           //  apiLimitMessage.style.display = 'block';
-          alert('An error occurred while generating the image because API limit.');
+          //alert('An error occurred while generating the image because API limit.');
+          const delay = 18000; // 1 second
+
+          setTimeout(() => {
+              closeSection.style.display = 'block';
+          }, delay);
             return
         } 
-
         if (!imageResponse.ok) {
             throw new Error(`Server responded with status: ${imageResponse.status}`);
         }
@@ -211,11 +215,6 @@ document.getElementById('cardForm').addEventListener('submit', async (event) => 
     } catch (error) {
 
         console.error('Error:', error);
-        const delay = 1000; // 1 second
-
-        setTimeout(() => {
-            closeSection.style.display = 'block';
-        }, delay);
         
         //alert('An error occurred while generating the image because API limit.');
 

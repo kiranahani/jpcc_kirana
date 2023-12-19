@@ -95,7 +95,7 @@ app.post('/generate-image', async (req, res) => {
             model   : 'dall-e-3',
             prompt  : prompt,
             n       : 1,
-            size    : '1024x1024',
+            size    : '808x1024',
         }, {
             headers: { Authorization: `Bearer ${DALLE_API_KEY}` },
         });
@@ -125,9 +125,9 @@ app.post('/generate-image', async (req, res) => {
     } catch (error) {
 
         if (error.response?.data?.error) {
-          //  saveErrorLog(JSON.stringify(error.response.data.error))
+          saveErrorLog(JSON.stringify(error.response.data.error))
         } else {
-          //  saveErrorLog(JSON.stringify(error))
+          saveErrorLog(JSON.stringify(error))
         }
 
         console.error(error);
@@ -171,7 +171,7 @@ app.post('/persist-generated-image', upload.single('image'), async (req, res) =>
 
         console.error(error)
         
-       // saveErrorLog(JSON.stringify(error))
+       saveErrorLog(JSON.stringify(error))
 
         res.status(500).send('Error saving generated image');
 
