@@ -25,6 +25,29 @@ if (!DALLE_API_KEY) {
     process.exit(1);
 }
 
+/**
+ * Save error message to a log file
+ * @param {string} message Error Message
+ */
+function saveErrorLog(message) {
+
+    const now = new Date
+
+    const day   = now.getDate().toString().padStart(2, '0')
+    const month = now.getMonth().toString().padStart(2, '0')
+    const year  = now.getFullYear().toString().padStart(4, '0')
+
+    const timestamp = now.toISOString()
+
+    const dir = "logs"
+
+    if (!fs.existsSync(dir)) {
+        fs.mkdirSync(dir)
+    }
+
+    fs.appendFileSync(`${dir}/error_log_${year}_${month}_${day}.log`, `[${timestamp}]: ${message}\n`)
+}
+
 const db = new sqlite3.Database('api_usage.db', (err) => {
     if (err) {
         console.error(err.message);
@@ -34,38 +57,83 @@ const db = new sqlite3.Database('api_usage.db', (err) => {
     db.run(`CREATE TABLE IF NOT EXISTS api_usage (date TEXT PRIMARY KEY, count INTEGER)`);
 });
 
-const dateLimits = {
-    '2023-12-19': 3000,
-    '2023-12-25': 3000,
-    '2023-12-26': 2000,
-    '2023-12-27': 200,
-    '2023-12-28': 200,
-    '2023-12-29': 200,
-    '2023-12-30': 200,
-};
+const dateLimits = [
+    {
+        quota   : 72,
+        date    : new Date('2023-12-19T00:00:00')
+    },
+    {
+        quota   : 3000,
+        date    : new Date('2023-12-25T00:00:00')
+    },
+    {
+        quota   : 2000,
+        date    : new Date('2023-12-26T00:00:00')
+    },
+    {
+        quota   : 200,
+        date    : new Date('2023-12-27T00:00:00')
+    },
+    {
+        quota   : 200,
+        date    : new Date('2023-12-28T00:00:00')
+    },
+    {
+        quota   : 200,
+        date    : new Date('2023-12-29T00:00:00')
+    },
+    {
+        quota   : 200,
+        date    : new Date('2023-12-30T00:00:00')
+    },
+    {
+        quota   : 0,
+        date    : new Date('2023-12-31T00:00:00')
+    }
+]
 
 function canMakeApiCall() {
     return new Promise((resolve, reject) => {
-        const today = new Date().toISOString().split('T')[0];
+        const now   = new Date()
+        const today = now.toISOString().split('T')[0];
 
-        if (!dateLimits.hasOwnProperty(today)) {
+        if (dateLimits[0].date <= now &&
+            dateLimits[dateLimits.length - 1].date >= now
+        ) {
             resolve(false);
             return
         }
 
+        let todaysCount = 0
         db.get('SELECT count FROM api_usage WHERE date = ?', [today], (err, row) => {
             if (err) {
                 reject(err);
                 return
             }
 
-            const currentCount = row ? row.count : 0;
+            todaysCount = row ? row.count : 0
+        })
 
-            if (currentCount >= dateLimits[today]) {
-                resolve(false);
-            } 
+        db.get('SELECT SUM(count) as total FROM api_usage WHERE date <= ?', [today], (err, row) => {
+            if (err) {
+                reject(err);
+                return
+            }
 
-            const newCount = currentCount + 1;
+            const currentCount = row ? row.total : 0;
+            let quotaAvailable = 0
+            dateLimits.forEach((limit) => {
+                if (limit.date < now) {
+                    quotaAvailable += limit.quota
+                }
+            })
+
+            if (quotaAvailable - currentCount < 1) {
+                resolve(false)
+                return
+            }
+
+            const newCount = todaysCount + 1;
             db.run('INSERT OR REPLACE INTO api_usage (date, count) VALUES (?, ?)', [today, newCount], (err) => {
                 if (err) {
                     reject(err);
@@ -95,7 +163,7 @@ app.post('/generate-image', async (req, res) => {
             model   : 'dall-e-3',
             prompt  : prompt,
             n       : 1,
-            size    : '808x1024',
+            size    : '1024x1024',
         }, {
             headers: { Authorization: `Bearer ${DALLE_API_KEY}` },
         });
@@ -125,9 +193,9 @@ app.post('/generate-image', async (req, res) => {
     } catch (error) {
 
         if (error.response?.data?.error) {
-          saveErrorLog(JSON.stringify(error.response.data.error))
+            saveErrorLog(JSON.stringify(error.response.data.error))
         } else {
-          saveErrorLog(JSON.stringify(error))
+            saveErrorLog(JSON.stringify(error))
         }
 
         console.error(error);
@@ -171,7 +239,7 @@ app.post('/persist-generated-image', upload.single('image'), async (req, res) =>
 
         console.error(error)
         
-       saveErrorLog(JSON.stringify(error))
+        saveErrorLog(JSON.stringify(error))
 
         res.status(500).send('Error saving generated image');
 
