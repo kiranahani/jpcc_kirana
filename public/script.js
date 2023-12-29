@@ -99,6 +99,7 @@ async function mergeImage(image) {
 
     } finally {
       //  processingIndicator.style.display = 'none'
+      $('.open').click();
     }
 
 }
@@ -165,7 +166,34 @@ async function persistGeneratedImage() {
 // Handle form submission for image generation
 document.getElementById('cardForm').addEventListener('submit', async (event) => {
     event.preventDefault();
-
+    const text = "PLEASE WAIT...";
+    const element = document.getElementById('typePlease');
+    let isAdding = true;
+    let textIndex = 0;
+    
+    function updateText() {
+      if (isAdding) {
+        textIndex++;
+        if (textIndex === text.length) {
+          isAdding = false;
+          setTimeout(updateText, 2000); // Wait 2 seconds at the end
+          return;
+        }
+      } else {
+        textIndex--;
+        if (textIndex === -1) {
+          isAdding = true;
+          setTimeout(updateText, 500); // Delay before retyping
+          return;
+        }
+      }
+    
+      element.innerText = text.substring(0, textIndex);
+      setTimeout(updateText, 120); // Typing speed
+    }
+    
+    updateText();
+    $('.close').click();
     const description       = document.getElementById('description').value;
     const customText        = document.getElementById('customText').value;
     const loadingIndicator  = document.getElementById('loadingIndicator');
@@ -186,13 +214,13 @@ document.getElementById('cardForm').addEventListener('submit', async (event) => 
 
         if (imageResponse.status === 429) {
             
-          //  apiLimitMessage.style.display = 'block';
-          //alert('An error occurred while generating the image because API limit.');
-          const delay = 18000; // 1 second
-
+          const delay = 2000; 
+          
           setTimeout(() => {
+            $('.open').click();
               closeSection.style.display = 'block';
           }, delay);
+          
             return
         } 
         if (!imageResponse.ok) {
@@ -219,7 +247,8 @@ document.getElementById('cardForm').addEventListener('submit', async (event) => 
         //alert('An error occurred while generating the image because API limit.');
 
     } finally {
-        loadingIndicator.style.display = 'none';
+       // loadingIndicator.style.display = 'none';
+        
         
     }
 });

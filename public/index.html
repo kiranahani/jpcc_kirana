@@ -14,14 +14,14 @@
   <link href="images/webclip.png" rel="apple-touch-icon">
 </head>
 <body class="body">
-  <section class="section-close"></section>
-  <section style="opacity:0" class="section-gate">
+  <section class="section-close" id="closeSection"></section>
+  <section style="opacity:0" class="section-gate" id="section-gate">
     <img id="gate-left" src="images/Gate_left.png" loading="lazy" 
     style="-webkit-transform:translate3d(-200px, 0, 0) scale3d(1, 1, 1) rotateX(0) rotateY(0) rotateZ(0) skew(0, 0);-moz-transform:translate3d(-200px, 0, 0) scale3d(1, 1, 1) rotateX(0) rotateY(0) rotateZ(0) skew(0, 0);-ms-transform:translate3d(-200px, 0, 0) scale3d(1, 1, 1) rotateX(0) rotateY(0) rotateZ(0) skew(0, 0);transform:translate3d(-200px, 0, 0) scale3d(1, 1, 1) rotateX(0) rotateY(0) rotateZ(0) skew(0, 0)" alt="" class="gate-left">
     <img id="gate-right" src="images/Gate_right.png" loading="lazy" 
     style="-webkit-transform:translate3d(200px, 0, 0) scale3d(1, 1, 1) rotateX(0) rotateY(0) rotateZ(0) skew(0, 0);-moz-transform:translate3d(200px, 0, 0) scale3d(1, 1, 1) rotateX(0) rotateY(0) rotateZ(0) skew(0, 0);-ms-transform:translate3d(200px, 0, 0) scale3d(1, 1, 1) rotateX(0) rotateY(0) rotateZ(0) skew(0, 0);transform:translate3d(200px, 0, 0) scale3d(1, 1, 1) rotateX(0) rotateY(0) rotateZ(0) skew(0, 0)" alt="" class="gate-right">
     <div style="opacity:0" class="loading">
-      <div>PLEASE WAIT...</div>
+      <div id="typePlease">PLEASE WAIT...</div>
     </div>
   </section>
   <section class="section-start">
@@ -46,7 +46,7 @@
     <div style="display:none" 
     class="success-message">
     <div id="resultImage" style="text-align: center;">
-    <canvas id="drawingCanvas" style="display: none;" width="1024" height="1024" ></canvas>
+    <canvas id="drawingCanvas" style="display: none;" width="808" height="1024" ></canvas>
     <img id="generatedImage" loading="lazy" sizes="120vw"  alt="" class="frame">
     </div>
       <div class="div-block-5">
@@ -64,11 +64,11 @@
 // on form submit
 $('.form').submit(()=>{	
   // click our div trigger to run our Webflow Interaction
-  $('.close').click();
+  //$('.close').click();
 });
 $('.loading').click(()=>{	
   // click our div trigger to run our Webflow Interaction
-  $('.open').click();
+ // $('.open').click();
 });
 </script>
 </body>
